@@ -6,7 +6,7 @@ mod tests {
     use super::*;
     use stopwatch::Stopwatch;
     #[test]
-    fn write_qmod() -> Result<(), ()> {
+    fn write_qmod() -> Result<(), Box<dyn std::error::Error>> {
         let mut stopwatch = Stopwatch::start_new();
         println!("Trying to write qmod");
         let qmod = qmod::Qmod {

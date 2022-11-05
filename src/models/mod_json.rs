@@ -108,12 +108,6 @@ pub struct CopyExtension {
     pub destination: String,
 }
 
-pub struct PreProcessingData {
-    pub version: String,
-    pub mod_id: String,
-    pub mod_name: String,
-}
-
 impl From<SharedPackageConfig> for ModJson {
     fn from(shared_package: SharedPackageConfig) -> Self {
         let local_deps = &shared_package.config.dependencies;

@@ -1,0 +1,16 @@
+[package]
+name = "qpm_qmod"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+semver = { version = "1.0", features = ["serde"] }
+cursed-semver-parser = { git = "https://github.com/raftario/cursed-semver-parser.git", features = [
+    "serde",
+] }
+#qpm
+qpm_package = { git = "https://github.com/QuestPackageManager/QPM.Package.git" }

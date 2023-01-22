@@ -2,9 +2,7 @@ use std::collections::HashSet;
 
 use qpm_package::{
     extensions::package_metadata::PackageMetadataExtensions,
-    models::{
-        dependency::{Dependency, SharedDependency, SharedPackageConfig},
-    },
+    models::dependency::{Dependency, SharedDependency, SharedPackageConfig},
 };
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
@@ -131,7 +129,8 @@ impl From<SharedPackageConfig> for ModJson {
                 }
 
                 // or if header only is false
-                !dep.dependency.additional_data.headers_only.unwrap_or(false)
+                dep.dependency.additional_data.mod_link.is_some()
+                    || !dep.dependency.additional_data.headers_only.unwrap_or(false)
             })
             .collect();
 
@@ -150,12 +149,18 @@ impl From<SharedPackageConfig> for ModJson {
             .iter()
             // Removes any dependency without a qmod link
             .filter_map(|dep| {
-                let shared_dep = restored_deps
-                    .iter()
-                    .find(|d| d.dependency.id == dep.id)
-                    .expect("Dependency in package config not found in restored dependencies");
-                if shared_dep.dependency.additional_data.mod_link.is_some() {
-                    return Some((shared_dep, dep));
+                let shared_dep = restored_deps.iter().find(|d| d.dependency.id == dep.id);
+                if shared_dep.is_none() {
+                    return None;
+                }
+                if shared_dep
+                    .unwrap()
+                    .dependency
+                    .additional_data
+                    .mod_link
+                    .is_some()
+                {
+                    return Some((shared_dep.unwrap(), dep));
                 }
 
                 None

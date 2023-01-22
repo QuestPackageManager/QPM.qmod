@@ -1,11 +1,13 @@
-use std::{
-    collections::HashSet,
-};
+use std::collections::HashSet;
 
-use qpm_package::{models::dependency::{Dependency, SharedDependency, SharedPackageConfig}, extensions::package_metadata::PackageMetadataExtensions};
+use qpm_package::{
+    extensions::package_metadata::PackageMetadataExtensions,
+    models::{
+        dependency::{Dependency, SharedDependency, SharedPackageConfig},
+    },
+};
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -113,37 +115,57 @@ impl From<SharedPackageConfig> for ModJson {
         let local_deps = &shared_package.config.dependencies;
 
         // Only bundle mods that are not specifically excluded in qpm.json or if they're not header-only
-        let restored_deps: Vec<_> = shared_package.restored_dependencies.iter().filter(|dep| {
-            let local_dep_opt = local_deps.iter().find(|local_dep| local_dep.id == dep.dependency.id);
+        let restored_deps: Vec<_> = shared_package
+            .restored_dependencies
+            .iter()
+            .filter(|dep| {
+                let local_dep_opt = local_deps
+                    .iter()
+                    .find(|local_dep| local_dep.id == dep.dependency.id);
 
-            if let Some(local_dep) = local_dep_opt {
-                // if force included/excluded, return early
-                if let Some(force_included) = local_dep.additional_data.include_qmod {
-                    return force_included;
+                if let Some(local_dep) = local_dep_opt {
+                    // if force included/excluded, return early
+                    if let Some(force_included) = local_dep.additional_data.include_qmod {
+                        return force_included;
+                    }
                 }
-            }
 
-            // or if header only is false
-            !dep.dependency.additional_data.headers_only.unwrap_or(false)
-        }).collect();
+                // or if header only is false
+                !dep.dependency.additional_data.headers_only.unwrap_or(false)
+            })
+            .collect();
 
         // List of dependencies we are directly referencing in qpm.json
-        let direct_dependencies: HashSet<String> = shared_package.config.dependencies.iter().map(|f| f.id.clone()).collect();
-
+        let direct_dependencies: HashSet<String> = shared_package
+            .config
+            .dependencies
+            .iter()
+            .map(|f| f.id.clone())
+            .collect();
 
         // downloadable mods links n stuff
         // mods that are header-only but provide qmods can be added as deps
-        let mods: Vec<ModDependency> = restored_deps
+        // Must be directly referenced in qpm.json
+        let mods: Vec<ModDependency> = local_deps
             .iter()
             // Removes any dependency without a qmod link
-            .filter(|dep| 
-                // Must be directly referenced in qpm.json
-                direct_dependencies.contains(&dep.dependency.id) &&
+            .filter_map(|dep| {
+                let shared_dep = restored_deps
+                    .iter()
+                    .find(|d| d.dependency.id == dep.id)
+                    .expect("Dependency in package config not found in restored dependencies");
+                if shared_dep.dependency.additional_data.mod_link.is_some() {
+                    return Some((shared_dep, dep));
+                }
 
-                dep.dependency.additional_data.mod_link.is_some())
-            .map(|dep| dep.to_owned().clone().into())
+                None
+            })
+            .map(|(shared_dep, dep)| ModDependency {
+                version_range: dep.version_range.clone(),
+                id: dep.id.clone(),
+                mod_link: shared_dep.dependency.additional_data.mod_link.clone(),
+            })
             .collect();
-
 
         // The rest of the mods to handle are not qmods, they are .so or .a mods
         // actual direct lib deps
@@ -185,7 +207,13 @@ impl From<SharedPackageConfig> for ModJson {
             cover_image: None,
             is_library: None,
             dependencies: mods,
-            mod_files: vec![shared_package.config.info.get_so_name().to_str().unwrap().to_string()],
+            mod_files: vec![shared_package
+                .config
+                .info
+                .get_so_name()
+                .to_str()
+                .unwrap()
+                .to_string()],
             library_files: libs,
             file_copies: Default::default(),
             copy_extensions: Default::default(),

@@ -194,6 +194,9 @@ impl From<SharedPackageConfig> for ModJson {
                 // don't include static deps
                 !lib.dependency.additional_data.static_linking.unwrap_or(false) &&
 
+                // it's marked to be included, defaults to including ( same as dependencies with qmods )
+                lib.dependency.additional_data.include_qmod.unwrap_or(true) &&
+
                 // Only keep libs that aren't downloadable
                 !mods.iter().any(|dep| lib.dependency.id == dep.id))
             .map(|dep| dep.get_so_name().to_str().unwrap().to_string())

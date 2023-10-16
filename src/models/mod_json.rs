@@ -188,11 +188,8 @@ impl From<SharedPackageConfig> for ModJson {
                     .find(|local_dep| local_dep.id == lib.dependency.id);
 
                 // if set, use it later
-                let include_qmod = if let Some(local_dep) = local_dep_opt {
-                    local_dep.additional_data.include_qmod.as_ref()
-                } else {
-                    None
-                };
+
+                let include_qmod = local_dep_opt.and_then(|local_dep| local_dep.additional_data.include_qmod.as_ref());
 
                 // Must be directly referenced in qpm.json
                 direct_dependencies.contains(&lib.dependency.id) &&

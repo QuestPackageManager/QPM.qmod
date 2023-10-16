@@ -181,7 +181,19 @@ impl From<SharedPackageConfig> for ModJson {
             // https://github.com/BMBF/resources/blob/master/com.beatgames.beatsaber/core-mods.json
             // but really the only lib that never is copied over is the modloader, the rest is either a downloaded qmod or just a copied lib
             // even core mods should technically be added via download
-            .filter(|lib|
+            .filter(|lib| {
+                // find the actual dependency for the include qmod value
+                let local_dep_opt = local_deps
+                    .iter()
+                    .find(|local_dep| local_dep.id == lib.dependency.id);
+
+                // if set, use it later
+                let include_qmod = if let Some(local_dep) = local_dep_opt {
+                    local_dep.additional_data.include_qmod.as_ref()
+                } else {
+                    None
+                };
+
                 // Must be directly referenced in qpm.json
                 direct_dependencies.contains(&lib.dependency.id) &&
 
@@ -189,16 +201,17 @@ impl From<SharedPackageConfig> for ModJson {
                 !lib.dependency.additional_data.headers_only.unwrap_or(false) &&
 
                 // Modloader should never be included
-                lib.dependency.id != "modloader" && 
-                
+                lib.dependency.id != "modloader" &&
+
                 // don't include static deps
                 !lib.dependency.additional_data.static_linking.unwrap_or(false) &&
 
                 // it's marked to be included, defaults to including ( same as dependencies with qmods )
-                lib.dependency.additional_data.include_qmod.unwrap_or(true) &&
+                include_qmod.map(|include| *include).unwrap_or(true) &&
 
                 // Only keep libs that aren't downloadable
-                !mods.iter().any(|dep| lib.dependency.id == dep.id))
+                !mods.iter().any(|dep| lib.dependency.id == dep.id)
+            })
             .map(|dep| dep.get_so_name().to_str().unwrap().to_string())
             .collect();
 

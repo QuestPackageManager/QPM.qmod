@@ -12,12 +12,15 @@ use serde::{Deserialize, Serialize};
 #[serde(default)] // skip missing fields
 pub struct ModJson {
     /// The Questpatcher version this mod.json was made for
+    /// 1.1.0
     #[serde(rename(serialize = "_QPVersion", deserialize = "_QPVersion"))]
     pub schema_version: Version,
     /// Name of the mod
     pub name: String,
     /// ID of the mod
     pub id: String,
+    /// Modloader. Possible values: QuestLoader/Scotland2
+    pub modloader: String,
     /// Author of the mod
     pub author: String,
     /// Optional slot for if you ported a mod
@@ -42,8 +45,10 @@ pub struct ModJson {
     pub is_library: Option<bool>,
     /// list of downloadable dependencies
     pub dependencies: Vec<ModDependency>,
-    /// list of files that go in the package's mod folder
+    /// list of files that go in the package's early mods folder
     pub mod_files: Vec<String>,
+    /// list of files that go in the package's late mods folder
+    pub late_mod_files: Vec<String>,
     /// list of files that go in the package's libs folder
     pub library_files: Vec<String>,
     /// list of files that will be copied on the quest
@@ -55,7 +60,7 @@ pub struct ModJson {
 impl Default for ModJson {
     fn default() -> Self {
         Self {
-            schema_version: Version::new(1, 0, 0),
+            schema_version: Version::new(1, 1, 0),
             name: Default::default(),
             id: Default::default(),
             author: Default::default(),
@@ -71,6 +76,8 @@ impl Default for ModJson {
             library_files: Default::default(),
             file_copies: Default::default(),
             copy_extensions: Default::default(),
+            modloader: "Scotland2".into(),
+            late_mod_files: Default::default(),
         }
     }
 }
@@ -108,6 +115,7 @@ pub struct CopyExtension {
     pub destination: String,
 }
 
+// TODO: Move to QPM.CLI
 impl From<SharedPackageConfig> for ModJson {
     fn from(shared_package: SharedPackageConfig) -> Self {
         let local_deps = &shared_package.config.dependencies;
@@ -149,18 +157,9 @@ impl From<SharedPackageConfig> for ModJson {
             .iter()
             // Removes any dependency without a qmod link
             .filter_map(|dep| {
-                let shared_dep = restored_deps.iter().find(|d| d.dependency.id == dep.id);
-                if shared_dep.is_none() {
-                    return None;
-                }
-                if shared_dep
-                    .unwrap()
-                    .dependency
-                    .additional_data
-                    .mod_link
-                    .is_some()
-                {
-                    return Some((shared_dep.unwrap(), dep));
+                let shared_dep = restored_deps.iter().find(|d| d.dependency.id == dep.id)?;
+                if shared_dep.dependency.additional_data.mod_link.is_some() {
+                    return Some((shared_dep, dep));
                 }
 
                 None
@@ -189,7 +188,8 @@ impl From<SharedPackageConfig> for ModJson {
 
                 // if set, use it later
 
-                let include_qmod = local_dep_opt.and_then(|local_dep| local_dep.additional_data.include_qmod.as_ref());
+                let include_qmod = local_dep_opt
+                    .and_then(|local_dep| local_dep.additional_data.include_qmod.as_ref());
 
                 // Must be directly referenced in qpm.json
                 direct_dependencies.contains(&lib.dependency.id) &&
@@ -204,7 +204,7 @@ impl From<SharedPackageConfig> for ModJson {
                 !lib.dependency.additional_data.static_linking.unwrap_or(false) &&
 
                 // it's marked to be included, defaults to including ( same as dependencies with qmods )
-                include_qmod.map(|include| *include).unwrap_or(true) &&
+                include_qmod.copied().unwrap_or(true) &&
 
                 // Only keep libs that aren't downloadable
                 !mods.iter().any(|dep| lib.dependency.id == dep.id)
@@ -213,10 +213,8 @@ impl From<SharedPackageConfig> for ModJson {
             .collect();
 
         Self {
-            schema_version: Version::new(1, 0, 0),
             name: shared_package.config.info.name.clone(),
             id: shared_package.config.info.id.clone(),
-            author: Default::default(),
             porter: None,
             version: shared_package.config.info.version.to_string(),
             package_id: None,
@@ -225,7 +223,8 @@ impl From<SharedPackageConfig> for ModJson {
             cover_image: None,
             is_library: None,
             dependencies: mods,
-            mod_files: vec![shared_package
+            // TODO: Change
+            late_mod_files: vec![shared_package
                 .config
                 .info
                 .get_so_name()
@@ -233,8 +232,7 @@ impl From<SharedPackageConfig> for ModJson {
                 .unwrap()
                 .to_string()],
             library_files: libs,
-            file_copies: Default::default(),
-            copy_extensions: Default::default(),
+            ..Default::default()
         }
     }
 }

@@ -12,5 +12,3 @@ semver = { version = "1.0", features = ["serde"] }
 cursed-semver-parser = { git = "https://github.com/raftario/cursed-semver-parser.git", features = [
     "serde",
 ] }
-#qpm
-qpm_package = { git = "https://github.com/QuestPackageManager/QPM.Package.git" }

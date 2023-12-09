@@ -16,7 +16,7 @@ pub struct ModJson {
     /// ID of the mod
     pub id: String,
     /// Modloader. Possible values: QuestLoader/Scotland2
-    pub modloader: String,
+    pub modloader: Option<String>,
     /// Author of the mod
     pub author: String,
     /// Optional slot for if you ported a mod
@@ -72,7 +72,7 @@ impl Default for ModJson {
             library_files: Default::default(),
             file_copies: Default::default(),
             copy_extensions: Default::default(),
-            modloader: "Scotland2".into(),
+            modloader: Some("Scotland2".into()),
             late_mod_files: Default::default(),
         }
     }

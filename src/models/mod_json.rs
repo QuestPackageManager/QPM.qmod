@@ -91,6 +91,10 @@ pub struct ModDependency {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "downloadIfMissing")]
     pub mod_link: Option<String>,
+    /// whether the mod is optional or required. If omitted, assume Some(True)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "required")]
+    pub required: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]

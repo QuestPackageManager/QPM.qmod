@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 
 use semver::{Version, VersionReq};
 use serde::{Deserialize, Serialize};
